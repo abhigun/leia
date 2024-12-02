@@ -1,6 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.0.1-RC7]
+
+- Introduced utils classes for building SchemaAttributes from Class and validating a json payload
+  against the SchemaDetails of a specified schema key
+- Introduced a `leia-common` module to host all the common utils classes 
+- Removed the `SchemaValidatable` annotation and moved it to a generic `SchemaDefinition`
+- Few Bug fixes in SchemaValidationUtils 
+
 ## [0.0.1-RC6]
 
 - LeiaClient - Introduced AuthHeaderSupplier in LeiaClientSupplier to support authentication on leia-server

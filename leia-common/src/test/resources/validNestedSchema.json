@@ -1,0 +1,46 @@
+{
+  "schemaKey": {
+    "namespace": "testNamespace",
+    "schemaName": "testSchema",
+    "version": "V1234"
+  },
+  "schemaState": "CREATED",
+  "schemaType": "JSON",
+  "schemaMeta": {
+    "createdBy": "testUser"
+  },
+  "attributes": [
+    {
+      "type": "STRING",
+      "name": "stringAttribute",
+      "optional": true,
+      "qualifiers": [
+        {
+          "type": "PII"
+        }
+      ]
+    },
+    {
+      "type": "OBJECT",
+      "name": "nestedObjectAttribute",
+      "optional": true,
+      "qualifiers": [
+        {
+          "type": "PII"
+        }
+      ],
+      "nestedAttributes": [
+        {
+          "type": "INTEGER",
+          "name": "integerAttribute",
+          "optional": true,
+          "qualifiers": [
+            {
+              "type": "PII"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
