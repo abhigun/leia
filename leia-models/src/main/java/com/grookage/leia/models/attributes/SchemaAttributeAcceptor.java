@@ -45,4 +45,6 @@ public interface SchemaAttributeAcceptor<T> {
     T accept(MapAttribute attribute);
 
     T accept(ObjectAttribute attribute);
+
+    T accept(SchemaReferenceAttribute attribute);
 }
