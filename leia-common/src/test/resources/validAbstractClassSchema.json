@@ -1,0 +1,22 @@
+{
+  "namespace": "testNamespace",
+  "schemaName": "abstract_class_schema",
+  "version": "V1234",
+  "schemaState": "CREATED",
+  "schemaType": "JSON",
+  "childReferences": [
+    {
+      "namespace": "testNamespace",
+      "name": "abstract_class_impl_schema"
+    }
+  ],
+  "schemaMeta": {
+    "createdBy": "testUser"
+  },
+  "attributes": [
+    {
+      "type": "STRING",
+      "name": "name"
+    }
+  ]
+}

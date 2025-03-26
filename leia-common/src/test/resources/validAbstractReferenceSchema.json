@@ -1,0 +1,20 @@
+{
+  "namespace": "testNamespace",
+  "schemaName": "abstract_reference_schema",
+  "version": "V1234",
+  "schemaState": "CREATED",
+  "schemaType": "JSON",
+  "schemaMeta": {
+    "createdBy": "testUser"
+  },
+  "attributes": [
+    {
+      "type": "REFERENCE",
+      "name": "nestedAbstractClass"
+    },
+    {
+      "type": "REFERENCE",
+      "name": "nestedAbstractClassImpl"
+    }
+  ]
+}

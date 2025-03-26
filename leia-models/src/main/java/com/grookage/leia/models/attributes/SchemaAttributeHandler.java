@@ -77,4 +77,9 @@ public abstract class SchemaAttributeHandler<T> implements SchemaAttributeAccept
     public T accept(final ObjectAttribute attribute) {
         return defaultHandler.apply(attribute);
     }
+
+    @Override
+    public T accept(final SchemaReferenceAttribute attribute) {
+        return defaultHandler.apply(attribute);
+    }
 }

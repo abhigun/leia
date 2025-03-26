@@ -87,6 +87,11 @@ public class SchemaBuilder {
                                             final boolean optional,
                                             final Set<QualifierInfo> qualifiers,
                                             final TypeVariableContext typeVariableContext) {
+        final var schemaReference = BuilderUtils.isSchemaReference(annotatedType);
+        if (schemaReference) {
+            return new SchemaReferenceAttribute(name, optional, qualifiers, BuilderUtils.getSchemaReference(annotatedType));
+        }
+
         final var type = annotatedType.getType();
         // Handle Class instances (eg. String, Enum classes, Complex POJO Objects etc.)
         if (type instanceof Class<?> klass) {
@@ -98,6 +103,7 @@ public class SchemaBuilder {
             return handleParameterizedType((AnnotatedParameterizedType) annotatedType, name, qualifiers, optional,
                     typeVariableContext);
         }
+
 
         // Handle GenericArrayType (e.g., T[], List<T[]>)
         if (type instanceof GenericArrayType) {
@@ -115,7 +121,6 @@ public class SchemaBuilder {
                                                     final TypeVariableContext typeVariableContext) {
         final var parameterizedType = (ParameterizedType) annotatedParameterizedType.getType();
         final var rawType = (Class<?>) parameterizedType.getRawType();
-
         // Handle List<T> or Set<T>
         if (ClassUtils.isAssignable(rawType, Collection.class)) {
             return handleCollection(annotatedParameterizedType, name, qualifiers, optional, typeVariableContext);

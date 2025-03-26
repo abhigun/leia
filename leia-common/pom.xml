@@ -31,6 +31,7 @@
 
     <properties>
         <lang3.version>3.11</lang3.version>
+        <reflections.version>0.10.2</reflections.version>
         <maven.deploy.skip>false</maven.deploy.skip>
     </properties>
 
@@ -86,6 +87,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>${reflections.version}</version>
+        </dependency>
 
     </dependencies>
 
