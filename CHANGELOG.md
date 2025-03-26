@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [0.0.1-RC23]
 
 - Adds support for handling Generics in `SchemaBuilder` & `SchemaValidationUtils`  
-- Adds support for handling abstract classes and schema references in `SchemaValidationUtils`
+- Adds support for handling abstract classes and schema references in `SchemaBuilder` & `SchemaValidationUtils`
 
 
 ## [0.0.1-RC22]
