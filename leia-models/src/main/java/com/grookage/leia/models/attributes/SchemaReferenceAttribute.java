@@ -14,12 +14,14 @@ import java.util.Set;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @NoArgsConstructor
 public class SchemaReferenceAttribute extends SchemaAttribute {
-    private SchemaReference reference;
+    private SchemaReference schemaReference;
 
     public SchemaReferenceAttribute(final String name,
                                     final boolean optional,
-                                    final Set<QualifierInfo> qualifiers) {
+                                    final Set<QualifierInfo> qualifiers,
+                                    SchemaReference schemaReference) {
         super(DataType.REFERENCE, name, optional, qualifiers);
+        this.schemaReference = schemaReference;
     }
 
     @Override

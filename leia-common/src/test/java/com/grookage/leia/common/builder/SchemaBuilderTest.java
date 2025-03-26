@@ -1,12 +1,26 @@
 package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.LeiaTestUtils;
-import com.grookage.leia.common.stubs.*;
+import com.grookage.leia.common.stubs.NestedStub;
+import com.grookage.leia.common.stubs.RecordStub;
+import com.grookage.leia.common.stubs.TestAbstractClass;
+import com.grookage.leia.common.stubs.TestEnum;
+import com.grookage.leia.common.stubs.TestGenericStub;
+import com.grookage.leia.common.stubs.TestObjectStub;
+import com.grookage.leia.common.stubs.TestParameterizedStub;
+import com.grookage.leia.common.stubs.TestRawCollectionStub;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.annotations.attribute.Optional;
 import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
 import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
-import com.grookage.leia.models.attributes.*;
+import com.grookage.leia.models.attributes.ArrayAttribute;
+import com.grookage.leia.models.attributes.BooleanAttribute;
+import com.grookage.leia.models.attributes.EnumAttribute;
+import com.grookage.leia.models.attributes.IntegerAttribute;
+import com.grookage.leia.models.attributes.MapAttribute;
+import com.grookage.leia.models.attributes.ObjectAttribute;
+import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.EncryptedQualifier;
 import com.grookage.leia.models.qualifiers.PIIQualifier;
 import com.grookage.leia.models.schema.SchemaType;
@@ -36,6 +50,15 @@ class SchemaBuilderTest {
         Assertions.assertEquals(SchemaValidationType.MATCHING, schemaCreateRequest.getValidationType());
         Assertions.assertEquals(schemaAttributes.size(), schemaCreateRequest.getAttributes().size());
         Assertions.assertEquals(2, schemaCreateRequest.getTags().size());
+    }
+
+    @Test
+    void testAbstractClassSchema() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestAbstractClass.class)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(4, schemaCreateRequest.getAttributes().size());
+
     }
 
     @Test
@@ -117,7 +140,7 @@ class SchemaBuilderTest {
         final var accountNumberAttribute = new StringAttribute("accountNumber", false, Set.of(new EncryptedQualifier()));
         testPIIDataAttributes.add(piiNameAttribute);
         testPIIDataAttributes.add(accountNumberAttribute);
-        final var piiDataListAttribute = new ArrayAttribute("piiDataList", false, Set.of(new PIIQualifier()),
+        final var piiDataListAttribute = new ArrayAttribute("piiDataList", false, Set.of(),
                 new ObjectAttribute("element", false, Set.of(new PIIQualifier()), testPIIDataAttributes));
         LeiaTestUtils.assertEquals(piiDataListAttribute, LeiaTestUtils.filter(schemaAttributes, "piiDataList").orElse(null));
 

@@ -1,5 +1,7 @@
 package com.grookage.leia.common.utils;
 
+import com.grookage.leia.models.annotations.SchemaDefinition;
+import com.grookage.leia.models.annotations.SchemaRef;
 import com.grookage.leia.models.annotations.attribute.Optional;
 import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
 import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
@@ -17,9 +19,13 @@ import com.grookage.leia.models.qualifiers.EncryptedQualifier;
 import com.grookage.leia.models.qualifiers.PIIQualifier;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.qualifiers.ShortLivedQualifier;
+import com.grookage.leia.models.schema.SchemaReference;
 import lombok.experimental.UtilityClass;
 
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -67,9 +73,45 @@ public class BuilderUtils {
                 .collect(Collectors.toSet());
     }
 
+    public Class<?> getRawType(final AnnotatedType annotatedType) {
+        final var type = annotatedType.getType();
+        if (type instanceof Class<?> klass)
+            return klass;
+        if (type instanceof ParameterizedType parameterizedType) {
+            return (Class<?>) parameterizedType.getRawType();
+        }
+        if (type instanceof GenericArrayType genericArrayType) {
+            return (Class<?>) genericArrayType.getGenericComponentType();
+        }
+        return null;
+    }
+
     public boolean isOptional(final Type type) {
         if (type instanceof Class<?> klass) {
             return isOptional(klass);
+        }
+        return false;
+    }
+
+    public boolean isOptional(final AnnotatedType annotatedType) {
+        return annotatedType.isAnnotationPresent(Optional.class);
+    }
+
+    public boolean isSchemaReference(final Class<?> klass) {
+        return klass.isAnnotationPresent(SchemaRef.class);
+    }
+
+    public boolean isSchemaReference(final AnnotatedType annotatedType) {
+        return annotatedType.isAnnotationPresent(SchemaRef.class);
+    }
+
+    public boolean isSchemaReference(final Field field) {
+        return field.isAnnotationPresent(SchemaRef.class);
+    }
+
+    public boolean isSchemaReference(final Type type) {
+        if (type instanceof Class<?> klass) {
+            return isSchemaReference(klass);
         }
         return false;
     }
@@ -89,6 +131,21 @@ public class BuilderUtils {
         return new HashSet<>();
     }
 
+    public Set<QualifierInfo> getQualifiers(final AnnotatedType annotatedType) {
+        Set<QualifierInfo> qualifiers = new HashSet<>();
+        if (annotatedType.isAnnotationPresent(Encrypted.class)) {
+            qualifiers.add(new EncryptedQualifier());
+        }
+        if (annotatedType.isAnnotationPresent(PII.class)) {
+            qualifiers.add(new PIIQualifier());
+        }
+        if (annotatedType.isAnnotationPresent(ShortLived.class)) {
+            final var shortLived = annotatedType.getAnnotation(ShortLived.class);
+            qualifiers.add(new ShortLivedQualifier(shortLived.ttlSeconds()));
+        }
+        return qualifiers;
+    }
+
     public Set<QualifierInfo> getQualifiers(final Field field) {
         Set<QualifierInfo> qualifiers = new HashSet<>();
         if (field.isAnnotationPresent(Encrypted.class)) {
@@ -102,6 +159,26 @@ public class BuilderUtils {
             qualifiers.add(new ShortLivedQualifier(shortLived.ttlSeconds()));
         }
         return qualifiers;
+    }
+
+    public SchemaReference getSchemaReference(final Class<?> klass) {
+        if (!klass.isAnnotationPresent(SchemaDefinition.class)) {
+            return null;
+        }
+        final var schemaDefinition = klass.getAnnotation(SchemaDefinition.class);
+        return SchemaReference.builder()
+                .namespace(schemaDefinition.namespace())
+                .name(schemaDefinition.name())
+                .build();
+    }
+
+    public SchemaReference getSchemaReference(final AnnotatedType annotatedType) {
+        if (!isSchemaReference(annotatedType)) {
+            return null;
+        }
+
+        final var klass = getRawType(annotatedType);
+        return getSchemaReference(klass);
     }
 
     public Set<QualifierInfo> getQualifiers(final Class<?> klass) {

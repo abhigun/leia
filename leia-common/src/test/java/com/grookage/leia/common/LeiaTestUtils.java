@@ -140,6 +140,11 @@ public class LeiaTestUtils {
                 }
                 return null;
             }
+
+            @Override
+            public Void accept(SchemaReferenceAttribute attribute) {
+                return null;
+            }
         });
     }
 
