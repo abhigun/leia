@@ -5,6 +5,7 @@ import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.qualifiers.QualifierType;
 import com.grookage.leia.models.qualifiers.ShortLivedQualifier;
 import lombok.experimental.UtilityClass;
+import lombok.val;
 import org.junit.jupiter.api.Assertions;
 
 import java.util.Iterator;
@@ -140,6 +141,14 @@ public class LeiaTestUtils {
                 }
                 return null;
             }
+
+            @Override
+            public Void accept(SchemaReferenceAttribute attribute) {
+                Assertions.assertInstanceOf(SchemaReferenceAttribute.class, original, "Original is not SchemaReferenceAttribute");
+                val originalAttribute = (SchemaReferenceAttribute) original;
+                Assertions.assertEquals(originalAttribute.getReference(), attribute.getReference());
+                return null;
+            }
         });
     }
 
@@ -168,7 +177,7 @@ public class LeiaTestUtils {
     }
 
     private Optional<QualifierInfo> filter(final Set<QualifierInfo> qualifiers,
-                                          final QualifierType type) {
+                                           final QualifierType type) {
         if (Objects.isNull(qualifiers)) {
             return Optional.empty();
         }

@@ -31,11 +31,15 @@ public class FieldUtils {
     public List<Field> getAllFields(final Class<?> type) {
         List<Field> fields = new ArrayList<>();
         for (Class<?> c = type; c != null; c = c.getSuperclass()) {
-            Arrays.stream(c.getDeclaredFields())
-                    .filter(field -> !isNonSerializable(field))
-                    .forEach(fields::add);
+            fields.addAll(getClassFields(c));
         }
         return fields;
+    }
+
+    public List<Field> getClassFields(final Class<?> klass) {
+        return Arrays.stream(klass.getDeclaredFields())
+                .filter(field -> !isNonSerializable(field))
+                .toList();
     }
 
     private boolean isNonSerializable(final Field field) {
@@ -47,7 +51,7 @@ public class FieldUtils {
     }
 
     public Optional<Field> filter(final String name,
-                                   final List<Field> fields) {
+                                  final List<Field> fields) {
         return fields.stream()
                 .filter(each -> each.getName().equals(name))
                 .findFirst();

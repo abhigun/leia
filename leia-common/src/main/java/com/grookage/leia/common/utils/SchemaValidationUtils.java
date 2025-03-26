@@ -18,13 +18,11 @@ package com.grookage.leia.common.utils;
 
 import com.google.common.collect.Sets;
 import com.grookage.leia.common.context.TypeVariableContext;
+import com.grookage.leia.common.validation.ValidationContext;
+import com.grookage.leia.common.validation.ValidationResponse;
 import com.grookage.leia.common.violation.LeiaSchemaViolation;
-import com.grookage.leia.common.violation.ViolationContext;
-import com.grookage.leia.models.attributes.ArrayAttribute;
-import com.grookage.leia.models.attributes.MapAttribute;
-import com.grookage.leia.models.attributes.ObjectAttribute;
-import com.grookage.leia.models.attributes.SchemaAttribute;
-import com.grookage.leia.models.attributes.SchemaAttributeHandler;
+import com.grookage.leia.models.annotations.SchemaDefinition;
+import com.grookage.leia.models.attributes.*;
 import com.grookage.leia.models.schema.SchemaDetails;
 import com.grookage.leia.models.schema.SchemaValidationType;
 import com.grookage.leia.models.schema.SchemaValidationVisitor;
@@ -51,28 +49,50 @@ public class SchemaValidationUtils {
     static Function<Class<?>, Function<SchemaAttribute, Boolean>> assignableCheckFunction =
             klass -> attribute -> ClassUtils.isAssignable(klass, attribute.getType().getAssignableClass());
 
-    public List<LeiaSchemaViolation> valid(final SchemaDetails schemaDetails,
+    public ValidationResponse valid(final SchemaDetails schemaDetails,
                                            final Class<?> klass) {
-        return valid(schemaDetails.getValidationType(), schemaDetails.getAttributes(), klass,
-                new ViolationContext(), new TypeVariableContext());
+        //TODO: Reuse reflections to save scan time
+        return valid(schemaDetails, klass, input -> Set.of());
     }
 
-    public List<LeiaSchemaViolation> valid(final SchemaValidationType validationType,
+    public ValidationResponse valid(final SchemaDetails schemaDetails,
+                                           final Class<?> klass,
+                                           Function<Class<?>, Set<Class<?>>> subTypeResolver) {
+        final var validationContext = new ValidationContext();
+        final var typeVariableContext = new TypeVariableContext();
+        if (null != schemaDetails.getChildReferences()) {
+            subTypeResolver.apply(klass).forEach(each -> {
+                pushClassForValidation(each, validationContext, String.format("Missing schema definition annotation on  subclass %s of %s",
+                        each.getSimpleName(), klass.getSimpleName()), null);
+            });
+        }
+        if (null == schemaDetails.getParentReference()) {
+            return valid(schemaDetails.getValidationType(), schemaDetails.getAttributes(), klass, null, validationContext, typeVariableContext);
+        }
+        final var parentClass = klass.getSuperclass();
+        pushClassForValidation(parentClass, validationContext, String.format("Missing schema definition annotation on parent class %s of %s",
+                parentClass.getSimpleName(), klass.getSimpleName()), null);
+        final var fields = FieldUtils.getClassFields(klass);
+        return valid(schemaDetails.getValidationType(), schemaDetails.getAttributes(), klass, fields, validationContext, typeVariableContext);
+    }
+
+    public ValidationResponse valid(final SchemaValidationType validationType,
                                            final Set<SchemaAttribute> attributes,
                                            final Class<?> klass) {
-        return valid(validationType, attributes, klass, new ViolationContext(), new TypeVariableContext());
+        return valid(validationType, attributes, klass, null, new ValidationContext(), new TypeVariableContext());
     }
 
-    public List<LeiaSchemaViolation> valid(final SchemaValidationType validationType,
+    public ValidationResponse valid(final SchemaValidationType validationType,
                                            final Set<SchemaAttribute> attributes,
                                            final Class<?> klass,
-                                           final ViolationContext violationContext,
+                                           final List<Field> fields,
+                                           final ValidationContext violationContext,
                                            final TypeVariableContext typeVariableContext) {
         violationContext.pushClass(klass);
-        final var fields = FieldUtils.getAllFields(klass);
-        validateSchemaStructure(validationType, attributes, fields, violationContext);
+        final var fieldList = fields == null ? FieldUtils.getAllFields(klass) : fields;
+        validateSchemaStructure(validationType, attributes, fieldList, violationContext);
         attributes.forEach(each -> {
-            final var field = FieldUtils.filter(each.getName(), fields);
+            final var field = FieldUtils.filter(each.getName(), fieldList);
             if (field.isEmpty()) {
                 violationContext.addViolation("Missing Field", each.getName());
                 return;
@@ -80,13 +100,16 @@ public class SchemaValidationUtils {
             validateField(each, field.get(), validationType, violationContext, typeVariableContext);
         });
         violationContext.popClass();
-        return violationContext.getViolations();
+        return ValidationResponse.builder()
+                .violations(violationContext.getViolations())
+                .classesToValidate(violationContext.getValidationQueue())
+                .build();
     }
 
     private void validateField(final SchemaAttribute attribute,
                                final Field field,
                                final SchemaValidationType validationType,
-                               final ViolationContext violationContext,
+                               final ValidationContext violationContext,
                                final TypeVariableContext typeVariableContext) {
         final var type = typeVariableContext.resolveType(field.getGenericType());
         validateType(validationType, attribute, type, violationContext,
@@ -96,10 +119,10 @@ public class SchemaValidationUtils {
     private void validateType(final SchemaValidationType validationType,
                               final SchemaAttribute attribute,
                               final Type type,
-                              final ViolationContext violationContext,
+                              final ValidationContext violationContext,
                               final TypeVariableContext typeVariableContext) {
         if (type instanceof Class<?> klass) {
-            validateClass(validationType, attribute, klass, violationContext);
+            validateClass(validationType, attribute, klass, violationContext, typeVariableContext);
         } else if (type instanceof ParameterizedType parameterizedType) {
             validateParameterizedType(validationType, attribute, parameterizedType, violationContext, typeVariableContext);
         } else if (type instanceof GenericArrayType arrayType) {
@@ -112,7 +135,8 @@ public class SchemaValidationUtils {
     private void validateClass(final SchemaValidationType validationType,
                                final SchemaAttribute schemaAttribute,
                                final Class<?> klass,
-                               final ViolationContext violationContext) {
+                               final ValidationContext violationContext,
+                               final TypeVariableContext typeVariableContext) {
         if (!isMatchingType(klass, schemaAttribute)) {
             violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, schemaAttribute.getType(), klass.getSimpleName()),
                     schemaAttribute.getName());
@@ -124,7 +148,7 @@ public class SchemaValidationUtils {
             public Void accept(ArrayAttribute attribute) {
                 if (Objects.nonNull(attribute.getElementAttribute())) {
                     if (klass.isArray()) {
-                        validateClass(validationType, attribute.getElementAttribute(), klass.getComponentType(), violationContext);
+                        validateClass(validationType, attribute.getElementAttribute(), klass.getComponentType(), violationContext, typeVariableContext);
                         return null;
                     }
                     // Provided List, Set expected List<?>, Set<?>
@@ -147,8 +171,15 @@ public class SchemaValidationUtils {
             @Override
             public Void accept(ObjectAttribute attribute) {
                 if (Objects.nonNull(attribute.getNestedAttributes())) {
-                    valid(validationType, attribute.getNestedAttributes(), klass, violationContext, new TypeVariableContext());
+                    valid(validationType, attribute.getNestedAttributes(), klass, null, violationContext, new TypeVariableContext());
                 }
+                return null;
+            }
+
+            @Override
+            public Void accept(SchemaReferenceAttribute attribute) {
+                pushClassForValidation(klass, violationContext, String.format("Missing schema definition annotation on referenced class %s",
+                        klass.getSimpleName()), attribute.getName());
                 return null;
             }
         });
@@ -157,7 +188,7 @@ public class SchemaValidationUtils {
     private void validateParameterizedType(final SchemaValidationType validationType,
                                            final SchemaAttribute attribute,
                                            final ParameterizedType parameterizedType,
-                                           final ViolationContext violationContext,
+                                           final ValidationContext violationContext,
                                            final TypeVariableContext typeVariableContext) {
         final var rawType = (Class<?>) parameterizedType.getRawType();
         if (attribute instanceof ArrayAttribute arrayAttribute) {
@@ -179,7 +210,7 @@ public class SchemaValidationUtils {
                 return;
             }
             final var newContext = TypeVariableContext.from(rawType, parameterizedType, typeVariableContext);
-            valid(validationType, objectAttribute.getNestedAttributes(), rawType, violationContext, newContext);
+            valid(validationType, objectAttribute.getNestedAttributes(), rawType, null, violationContext, newContext);
         } else {
             violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, attribute.getType(), parameterizedType), attribute.getName());
         }
@@ -188,7 +219,7 @@ public class SchemaValidationUtils {
     private void validateGenericArrayType(final SchemaValidationType validationType,
                                           final SchemaAttribute attribute,
                                           final GenericArrayType arrayType,
-                                          final ViolationContext violationContext,
+                                          final ValidationContext violationContext,
                                           final TypeVariableContext typeVariableContext) {
         if (attribute instanceof ArrayAttribute arrayAttribute) {
             final var elementType = typeVariableContext.resolveType(arrayType.getGenericComponentType());
@@ -216,7 +247,7 @@ public class SchemaValidationUtils {
     private void validateSchemaStructure(final SchemaValidationType validationType,
                                          final Set<SchemaAttribute> attributes,
                                          final List<Field> fields,
-                                         final ViolationContext violationContext) {
+                                         final ValidationContext violationContext) {
         final var fieldNames = fields.stream()
                 .map(Field::getName)
                 .map(String::toUpperCase)
@@ -245,6 +276,14 @@ public class SchemaValidationUtils {
                 return null;
             }
         });
+    }
+
+    private void pushClassForValidation(Class<?> klass, ValidationContext validationContext, String message, String path) {
+        if (klass.isAnnotationPresent(SchemaDefinition.class)) {
+            validationContext.validateClass(klass);
+        } else {
+            validationContext.addViolation(message, path);
+        }
     }
 
     public boolean valid(final Class<?> klass,

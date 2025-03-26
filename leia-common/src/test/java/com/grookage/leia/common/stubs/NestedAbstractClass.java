@@ -3,8 +3,8 @@ package com.grookage.leia.common.stubs;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 
 @SchemaDefinition(
-        namespace = "test",
-        name = "nested_abstract_class",
+        namespace = "testNamespace",
+        name = "abstract_class_schema",
         version = "v1"
 )
 public abstract class NestedAbstractClass {

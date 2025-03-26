@@ -4,8 +4,8 @@ import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.annotations.SchemaReference;
 
 @SchemaDefinition(
-        name = "test_abstract_class",
-        namespace = "test",
+        name = "abstract_reference_schema",
+        namespace = "testNamespace",
         version = "v1"
 )
 public class TestAbstractClass {
