@@ -194,14 +194,13 @@ class SchemaValidationUtilsTest {
         final var validationResponse = SchemaValidationUtils.valid(abstractReferenceSchema, TestAbstractClass.class);
         Assertions.assertTrue(validationResponse.getViolations().isEmpty());
         Assertions.assertEquals(2, validationResponse.getClassesToValidate().size());
-        Class<?>[] classesToValidate = validationResponse.getClassesToValidate().toArray(Class[]::new);
 
-        final var abstractClassResponse = SchemaValidationUtils.valid(abstractClassSchema, classesToValidate[0],
-                klass -> Set.of(NestedAbstractClassImpl.class));
+        final var abstractClassResponse = SchemaValidationUtils.valid(abstractClassSchema,
+                NestedAbstractClass.class, klass -> Set.of(NestedAbstractClassImpl.class));
         Assertions.assertTrue(abstractClassResponse.getViolations().isEmpty());
         Assertions.assertEquals(1, abstractClassResponse.getClassesToValidate().size());
 
-        final var implResponse = SchemaValidationUtils.valid(abstractClassImplSchema, classesToValidate[1]);
+        final var implResponse = SchemaValidationUtils.valid(abstractClassImplSchema,NestedAbstractClassImpl.class);
         Assertions.assertTrue(implResponse.getViolations().isEmpty());
         Assertions.assertEquals(1, abstractClassResponse.getClassesToValidate().size());
     }

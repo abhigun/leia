@@ -146,7 +146,7 @@ public class LeiaTestUtils {
             public Void accept(SchemaReferenceAttribute attribute) {
                 Assertions.assertInstanceOf(SchemaReferenceAttribute.class, original, "Original is not SchemaReferenceAttribute");
                 val originalAttribute = (SchemaReferenceAttribute) original;
-                Assertions.assertEquals(originalAttribute.getReference(), attribute.getReference());
+                Assertions.assertEquals(originalAttribute.getSchemaReference(), attribute.getSchemaReference());
                 return null;
             }
         });

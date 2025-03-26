@@ -31,6 +31,9 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
 
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedParameterizedType;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
@@ -111,22 +114,23 @@ public class SchemaValidationUtils {
                                final SchemaValidationType validationType,
                                final ValidationContext violationContext,
                                final TypeVariableContext typeVariableContext) {
-        final var type = typeVariableContext.resolveType(field.getGenericType());
+        final var type = typeVariableContext.resolveType(field.getAnnotatedType());
         validateType(validationType, attribute, type, violationContext,
                 typeVariableContext);
     }
 
     private void validateType(final SchemaValidationType validationType,
                               final SchemaAttribute attribute,
-                              final Type type,
+                              final AnnotatedType annotatedType,
                               final ValidationContext violationContext,
                               final TypeVariableContext typeVariableContext) {
+        final var type = annotatedType.getType();
         if (type instanceof Class<?> klass) {
-            validateClass(validationType, attribute, klass, violationContext, typeVariableContext);
-        } else if (type instanceof ParameterizedType parameterizedType) {
-            validateParameterizedType(validationType, attribute, parameterizedType, violationContext, typeVariableContext);
-        } else if (type instanceof GenericArrayType arrayType) {
-            validateGenericArrayType(validationType, attribute, arrayType, violationContext, typeVariableContext);
+            validateClass(validationType, attribute, klass, violationContext);
+        } else if (type instanceof ParameterizedType) {
+            validateParameterizedType(validationType, attribute, (AnnotatedParameterizedType)annotatedType, violationContext, typeVariableContext);
+        } else if (type instanceof GenericArrayType) {
+            validateGenericArrayType(validationType, attribute, (AnnotatedArrayType) annotatedType, violationContext, typeVariableContext);
         } else {
             violationContext.addViolation("Unsupported class type: " + type);
         }
@@ -135,8 +139,7 @@ public class SchemaValidationUtils {
     private void validateClass(final SchemaValidationType validationType,
                                final SchemaAttribute schemaAttribute,
                                final Class<?> klass,
-                               final ValidationContext violationContext,
-                               final TypeVariableContext typeVariableContext) {
+                               final ValidationContext violationContext) {
         if (!isMatchingType(klass, schemaAttribute)) {
             violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, schemaAttribute.getType(), klass.getSimpleName()),
                     schemaAttribute.getName());
@@ -148,7 +151,7 @@ public class SchemaValidationUtils {
             public Void accept(ArrayAttribute attribute) {
                 if (Objects.nonNull(attribute.getElementAttribute())) {
                     if (klass.isArray()) {
-                        validateClass(validationType, attribute.getElementAttribute(), klass.getComponentType(), violationContext, typeVariableContext);
+                        validateClass(validationType, attribute.getElementAttribute(), klass.getComponentType(), violationContext);
                         return null;
                     }
                     // Provided List, Set expected List<?>, Set<?>
@@ -187,30 +190,31 @@ public class SchemaValidationUtils {
 
     private void validateParameterizedType(final SchemaValidationType validationType,
                                            final SchemaAttribute attribute,
-                                           final ParameterizedType parameterizedType,
+                                           final AnnotatedParameterizedType annotatedParameterizedType,
                                            final ValidationContext violationContext,
                                            final TypeVariableContext typeVariableContext) {
+        final var parameterizedType = (ParameterizedType) annotatedParameterizedType.getType();
         final var rawType = (Class<?>) parameterizedType.getRawType();
         if (attribute instanceof ArrayAttribute arrayAttribute) {
             if (arrayAttribute.getElementAttribute() == null) {
                 return;
             }
-            final var elementType = typeVariableContext.resolveType(parameterizedType.getActualTypeArguments()[0]);
+            final var elementType = typeVariableContext.resolveType(annotatedParameterizedType.getAnnotatedActualTypeArguments()[0]);
             validateType(validationType, arrayAttribute.getElementAttribute(), elementType, violationContext, typeVariableContext);
         } else if (attribute instanceof MapAttribute mapAttribute) {
             if (Objects.isNull(mapAttribute.getKeyAttribute()) || Objects.isNull(mapAttribute.getValueAttribute())) {
                 return;
             }
-            final var keyType = typeVariableContext.resolveType(parameterizedType.getActualTypeArguments()[0]);
-            final var valueType = typeVariableContext.resolveType(parameterizedType.getActualTypeArguments()[1]);
+            final var keyType = typeVariableContext.resolveType(annotatedParameterizedType.getAnnotatedActualTypeArguments()[0]);
+            final var valueType = typeVariableContext.resolveType(annotatedParameterizedType.getAnnotatedActualTypeArguments()[1]);
             validateType(validationType, mapAttribute.getKeyAttribute(), keyType, violationContext, typeVariableContext);
             validateType(validationType, mapAttribute.getValueAttribute(), valueType, violationContext, typeVariableContext);
         } else if (attribute instanceof ObjectAttribute objectAttribute) {
             if (CollectionUtils.isNullOrEmpty(objectAttribute.getNestedAttributes())) {
                 return;
             }
-            final var newContext = TypeVariableContext.from(rawType, parameterizedType, typeVariableContext);
-            valid(validationType, objectAttribute.getNestedAttributes(), rawType, null, violationContext, newContext);
+            final var newContext = TypeVariableContext.from(rawType, annotatedParameterizedType, typeVariableContext);
+            valid(validationType, objectAttribute.getNestedAttributes(), rawType,null, violationContext, newContext);
         } else {
             violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, attribute.getType(), parameterizedType), attribute.getName());
         }
@@ -218,15 +222,15 @@ public class SchemaValidationUtils {
 
     private void validateGenericArrayType(final SchemaValidationType validationType,
                                           final SchemaAttribute attribute,
-                                          final GenericArrayType arrayType,
+                                          final AnnotatedArrayType annotatedArrayType,
                                           final ValidationContext violationContext,
                                           final TypeVariableContext typeVariableContext) {
         if (attribute instanceof ArrayAttribute arrayAttribute) {
-            final var elementType = typeVariableContext.resolveType(arrayType.getGenericComponentType());
+            final var elementType = typeVariableContext.resolveType(annotatedArrayType.getAnnotatedGenericComponentType());
             validateType(validationType, arrayAttribute.getElementAttribute(), elementType, violationContext, typeVariableContext);
             return;
         }
-        violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, attribute.getType(), arrayType), attribute.getName());
+        violationContext.addViolation(String.format(TYPE_MISMATCH_MESSAGE, attribute.getType(), annotatedArrayType), attribute.getName());
     }
 
     private boolean isMatchingType(final Class<?> klass,
