@@ -115,8 +115,7 @@ public class SchemaValidationUtils {
                                final ValidationContext validationContext,
                                final TypeVariableContext typeVariableContext) {
         final var type = typeVariableContext.resolveType(field.getAnnotatedType());
-        validateType(validationType, attribute, type, validationContext,
-                typeVariableContext);
+        validateType(validationType, attribute, type, validationContext, typeVariableContext);
     }
 
     private void validateType(final SchemaValidationType validationType,

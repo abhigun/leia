@@ -22,19 +22,13 @@ import com.grookage.leia.common.utils.FieldUtils;
 import com.grookage.leia.common.utils.SchemaConstants;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.attributes.*;
-import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.schema.ingestion.CreateSchemaRequest;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.ClassUtils;
 
 import java.lang.reflect.*;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**

@@ -6,15 +6,7 @@ import com.grookage.leia.models.annotations.attribute.Optional;
 import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
 import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
 import com.grookage.leia.models.annotations.attribute.qualifiers.ShortLived;
-import com.grookage.leia.models.attributes.BooleanAttribute;
-import com.grookage.leia.models.attributes.ByteAttribute;
-import com.grookage.leia.models.attributes.CharacterAttribute;
-import com.grookage.leia.models.attributes.DoubleAttribute;
-import com.grookage.leia.models.attributes.FloatAttribute;
-import com.grookage.leia.models.attributes.IntegerAttribute;
-import com.grookage.leia.models.attributes.LongAttribute;
-import com.grookage.leia.models.attributes.SchemaAttribute;
-import com.grookage.leia.models.attributes.ShortAttribute;
+import com.grookage.leia.models.attributes.*;
 import com.grookage.leia.models.qualifiers.EncryptedQualifier;
 import com.grookage.leia.models.qualifiers.PIIQualifier;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
@@ -86,13 +78,6 @@ public class BuilderUtils {
         return null;
     }
 
-    public boolean isOptional(final Type type) {
-        if (type instanceof Class<?> klass) {
-            return isOptional(klass);
-        }
-        return false;
-    }
-
     public boolean isOptional(final AnnotatedType annotatedType) {
         return annotatedType.isAnnotationPresent(Optional.class);
     }
@@ -105,17 +90,6 @@ public class BuilderUtils {
         return annotatedType.isAnnotationPresent(SchemaRef.class);
     }
 
-    public boolean isSchemaReference(final Field field) {
-        return field.isAnnotationPresent(SchemaRef.class);
-    }
-
-    public boolean isSchemaReference(final Type type) {
-        if (type instanceof Class<?> klass) {
-            return isSchemaReference(klass);
-        }
-        return false;
-    }
-
     public boolean isOptional(final Class<?> klass) {
         return klass.isAnnotationPresent(Optional.class);
     }
@@ -123,14 +97,6 @@ public class BuilderUtils {
     public boolean isOptional(final Field field) {
         return field.isAnnotationPresent(Optional.class);
     }
-
-    public Set<QualifierInfo> getQualifiers(final Type type) {
-        if (type instanceof Class<?> klass) {
-            return getQualifiers(klass);
-        }
-        return new HashSet<>();
-    }
-
     public Set<QualifierInfo> getQualifiers(final AnnotatedType annotatedType) {
         Set<QualifierInfo> qualifiers = new HashSet<>();
         if (annotatedType.isAnnotationPresent(Encrypted.class)) {
