@@ -18,9 +18,11 @@ package com.grookage.leia.validator;
 
 import com.grookage.leia.common.exception.SchemaValidationException;
 import com.grookage.leia.common.exception.ValidationErrorCode;
+import com.grookage.leia.common.utils.ReflectionUtils;
 import com.grookage.leia.common.utils.SchemaValidationUtils;
 import com.grookage.leia.common.violation.LeiaSchemaViolation;
 import com.grookage.leia.models.annotations.SchemaDefinition;
+import com.grookage.leia.models.attributes.SchemaAttribute;
 import com.grookage.leia.models.schema.SchemaDetails;
 import com.grookage.leia.models.schema.SchemaKey;
 import com.grookage.leia.models.utils.SchemaUtils;
@@ -34,6 +36,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class StaticSchemaValidator implements LeiaSchemaValidator {
@@ -57,7 +60,7 @@ public class StaticSchemaValidator implements LeiaSchemaValidator {
             throw SchemaValidationException.error(ValidationErrorCode.NO_SCHEMA_FOUND,
                     String.format("No schema found with key: %s", schemaKey.getReferenceId()));
         }
-        final Function<Class<?>, Set<Class<?>>> subTypeResolver = input -> (Set<Class<?>>) reflections.getSubTypesOf(input);
+        final Function<Class<?>, Set<Class<?>>> subTypeResolver = input -> ReflectionUtils.getImmediateSubTypes(reflections, input);
         val validationResponse = SchemaValidationUtils.valid(details, klass, subTypeResolver);
         validationResponse.getClassesToValidate().forEach(each -> {
             val annotation = each.getAnnotation(SchemaDefinition.class);

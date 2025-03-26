@@ -18,7 +18,7 @@ package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.context.TypeVariableContext;
 import com.grookage.leia.common.utils.BuilderUtils;
-import com.grookage.leia.common.utils.FieldUtils;
+import com.grookage.leia.common.utils.ReflectionUtils;
 import com.grookage.leia.common.utils.SchemaConstants;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.attributes.*;
@@ -69,7 +69,7 @@ public class SchemaBuilder {
     }
 
     public Set<SchemaAttribute> getSchemaAttributes(final Class<?> klass) {
-        return FieldUtils.getAllFields(klass)
+        return ReflectionUtils.getAllFields(klass)
                 .stream()
                 .map(field -> schemaAttribute(field, new TypeVariableContext()))
                 .collect(Collectors.toSet());
@@ -135,7 +135,7 @@ public class SchemaBuilder {
         // Extract and convert fields with resolved types
         // Capture generic type variables of the class from the parent context
         final var childContext = TypeVariableContext.from(rawType, annotatedParameterizedType, typeVariableContext);
-        final var fieldAttributes = FieldUtils.getAllFields(rawType)
+        final var fieldAttributes = ReflectionUtils.getAllFields(rawType)
                 .stream()
                 .map(field -> schemaAttribute(field, childContext)) // Resolves TypeVariable<T>
                 .collect(Collectors.toSet());
