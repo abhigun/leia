@@ -21,6 +21,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -63,6 +65,29 @@ public class BuilderUtils {
         return Arrays.stream(klass.getEnumConstants())
                 .map(enumConstant -> ((Enum<?>) enumConstant).name())
                 .collect(Collectors.toSet());
+    }
+
+    public boolean isValidChain(Class<?> klass) {
+        if (Objects.isNull(klass.getSuperclass())) {
+            return true;
+        }
+
+        final var current = klass.getSuperclass();
+        final var lastRef = isSchemaReference(klass);
+        for (Class<?> c = klass; c != null; c = c.getSuperclass()) {
+            if (!lastRef && isSchemaReference(current)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public List<Field> getFields(Class<?> klass) {
+        if (isValidChain(klass)) {
+            return FieldUtils.getClassFields(klass);
+        }
+        return FieldUtils.getAllFields(klass);
     }
 
     public Class<?> getRawType(final AnnotatedType annotatedType) {

@@ -21,14 +21,33 @@ import com.grookage.leia.common.utils.BuilderUtils;
 import com.grookage.leia.common.utils.FieldUtils;
 import com.grookage.leia.common.utils.SchemaConstants;
 import com.grookage.leia.models.annotations.SchemaDefinition;
-import com.grookage.leia.models.attributes.*;
+import com.grookage.leia.models.attributes.ArrayAttribute;
+import com.grookage.leia.models.attributes.DateAttribute;
+import com.grookage.leia.models.attributes.EnumAttribute;
+import com.grookage.leia.models.attributes.MapAttribute;
+import com.grookage.leia.models.attributes.ObjectAttribute;
+import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.attributes.SchemaReferenceAttribute;
+import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
+import com.grookage.leia.models.schema.SchemaReference;
 import com.grookage.leia.models.schema.ingestion.CreateSchemaRequest;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.ClassUtils;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedParameterizedType;
+import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -68,8 +87,13 @@ public class SchemaBuilder {
         );
     }
 
+    public List<SchemaReference> getChildReferences(final Class<?> klass) {
+        
+    }
+
     public Set<SchemaAttribute> getSchemaAttributes(final Class<?> klass) {
-        return FieldUtils.getAllFields(klass)
+        final var fields = BuilderUtils.getFields(klass);
+        return fields
                 .stream()
                 .map(field -> schemaAttribute(field, new TypeVariableContext()))
                 .collect(Collectors.toSet());
@@ -156,7 +180,7 @@ public class SchemaBuilder {
                 qualifiers,
                 schemaAttribute(annotatedKeyType, "key", BuilderUtils.isOptional(annotatedKeyType),
                         BuilderUtils.getQualifiers(annotatedKeyType), typeVariableContext),
-                schemaAttribute(annotatedValueType, "value",  BuilderUtils.isOptional(annotatedKeyType),
+                schemaAttribute(annotatedValueType, "value", BuilderUtils.isOptional(annotatedKeyType),
                         BuilderUtils.getQualifiers(annotatedKeyType), typeVariableContext)
         );
     }
@@ -171,7 +195,7 @@ public class SchemaBuilder {
                 name,
                 optional,
                 qualifiers,
-                schemaAttribute(annotatedElementType, ELEMENT,  BuilderUtils.isOptional(annotatedElementType),
+                schemaAttribute(annotatedElementType, ELEMENT, BuilderUtils.isOptional(annotatedElementType),
                         BuilderUtils.getQualifiers(annotatedElementType), typeVariableContext)
         );
     }
@@ -186,8 +210,8 @@ public class SchemaBuilder {
                 name,
                 optional,
                 qualifiers,
-                schemaAttribute(annotatedComponentType, ELEMENT,  BuilderUtils.isOptional(annotatedComponentType),
-                        BuilderUtils.getQualifiers(annotatedComponentType),  typeVariableContext)
+                schemaAttribute(annotatedComponentType, ELEMENT, BuilderUtils.isOptional(annotatedComponentType),
+                        BuilderUtils.getQualifiers(annotatedComponentType), typeVariableContext)
         );
     }
 
