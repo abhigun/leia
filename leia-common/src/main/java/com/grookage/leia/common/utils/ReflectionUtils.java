@@ -18,16 +18,15 @@ package com.grookage.leia.common.utils;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.experimental.UtilityClass;
+import org.reflections.Reflections;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @UtilityClass
-public class FieldUtils {
+public class ReflectionUtils {
     public List<Field> getAllFields(final Class<?> type) {
         List<Field> fields = new ArrayList<>();
         for (Class<?> c = type; c != null; c = c.getSuperclass()) {
@@ -55,5 +54,11 @@ public class FieldUtils {
         return fields.stream()
                 .filter(each -> each.getName().equals(name))
                 .findFirst();
+    }
+
+    public Set<Class<?>> getImmediateSubTypes(Reflections reflections, Class<?> klass) {
+        return reflections.getSubTypesOf(klass).stream()
+                .filter(each -> each.getSuperclass().equals(klass))
+                .collect(Collectors.toSet());
     }
 }

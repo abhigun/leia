@@ -20,7 +20,6 @@ import com.google.common.collect.Sets;
 import com.grookage.leia.common.context.TypeVariableContext;
 import com.grookage.leia.common.validation.ValidationContext;
 import com.grookage.leia.common.validation.ValidationResponse;
-import com.grookage.leia.common.violation.LeiaSchemaViolation;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.attributes.*;
 import com.grookage.leia.models.schema.SchemaDetails;
@@ -37,7 +36,6 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -75,7 +73,7 @@ public class SchemaValidationUtils {
         final var parentClass = klass.getSuperclass();
         pushClassForValidation(parentClass, validationContext, String.format("Missing schema definition annotation on parent class %s of %s",
                 parentClass.getSimpleName(), klass.getSimpleName()), null);
-        final var fields = FieldUtils.getClassFields(klass);
+        final var fields = ReflectionUtils.getClassFields(klass);
         return valid(schemaDetails.getValidationType(), schemaDetails.getAttributes(), klass, fields, validationContext, typeVariableContext);
     }
 
@@ -92,10 +90,10 @@ public class SchemaValidationUtils {
                                            final ValidationContext validationContext,
                                            final TypeVariableContext typeVariableContext) {
         validationContext.pushClass(klass);
-        final var fieldList = fields == null ? FieldUtils.getAllFields(klass) : fields;
+        final var fieldList = fields == null ? ReflectionUtils.getAllFields(klass) : fields;
         validateSchemaStructure(validationType, attributes, fieldList, validationContext);
         attributes.forEach(each -> {
-            final var field = FieldUtils.filter(each.getName(), fieldList);
+            final var field = ReflectionUtils.filter(each.getName(), fieldList);
             if (field.isEmpty()) {
                 validationContext.addViolation("Missing Field", each.getName());
                 return;
