@@ -19,6 +19,7 @@ package com.grookage.leia.models.schema.ingestion;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.schema.SchemaReference;
 import com.grookage.leia.models.schema.SchemaKey;
 import com.grookage.leia.models.schema.SchemaType;
 import com.grookage.leia.models.schema.SchemaValidationType;
@@ -52,6 +53,9 @@ public class CreateSchemaRequest {
     private String description;
     @NotEmpty
     private Set<SchemaAttribute> attributes;
+    SchemaReference parentReference;
+    @Builder.Default
+    List<SchemaReference> childReferences = new ArrayList<>();
     @Builder.Default
     private Set<TransformationTarget> transformationTargets = Set.of();
     private JsonNode data;

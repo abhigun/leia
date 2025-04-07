@@ -51,7 +51,9 @@ public enum DataType {
 
     MAP(Map.class),
 
-    ENUM(Enum.class);
+    ENUM(Enum.class),
+
+    REFERENCE(Object.class);
 
     private final Class<?> assignableClass;
 }

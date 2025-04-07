@@ -13,12 +13,14 @@ import com.grookage.leia.validator.stubs.TestRecordStub;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.reflections.Reflections;
 
 import java.util.List;
 import java.util.Set;
 
 class StaticSchemaValidatorTest {
     private static final String PACKAGE = "com.grookage.leia.validator.stubs";
+    private final Reflections reflections = new Reflections(PACKAGE);
 
     @Test
     void testSchemaValidator() {
@@ -62,7 +64,7 @@ class StaticSchemaValidatorTest {
 
     private SchemaDetails toSchemaDetails(final Class<?> schemaKlass) {
         final var schemaDefinition = schemaKlass.getAnnotation(SchemaDefinition.class);
-        final var createSchemaRequest = SchemaBuilder.buildSchemaRequest(schemaKlass)
+        final var createSchemaRequest = SchemaBuilder.buildSchemaRequest(schemaKlass, reflections)
                 .orElse(null);
         Assertions.assertNotNull(createSchemaRequest);
         return SchemaDetails.builder()

@@ -207,6 +207,11 @@ public class SchemaPayloadValidator {
                 }
                 return fieldNode.isObject();
             }
+
+            @Override
+            public Boolean accept(SchemaReferenceAttribute attribute) {
+                return fieldNode.isObject();
+            }
         });
     }
 }

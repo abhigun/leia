@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-class FieldUtilsTest {
+class ReflectionUtilsTest {
     @Test
     void testFieldUtils() {
-        final var fields = FieldUtils.getAllFields(TestData.class);
+        final var fields = ReflectionUtils.getAllFields(TestData.class);
         Assertions.assertFalse(fields.isEmpty());
         Assertions.assertEquals(2, fields.size());
         Assertions.assertTrue(fields.stream().noneMatch(field -> field.getName().equals("phoneNumber")));

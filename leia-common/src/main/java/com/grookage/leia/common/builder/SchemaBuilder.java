@@ -17,19 +17,39 @@
 package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.context.TypeVariableContext;
+import com.grookage.leia.common.exception.SchemaValidationException;
+import com.grookage.leia.common.exception.ValidationErrorCode;
 import com.grookage.leia.common.utils.BuilderUtils;
-import com.grookage.leia.common.utils.FieldUtils;
+import com.grookage.leia.common.utils.ReflectionUtils;
 import com.grookage.leia.common.utils.SchemaConstants;
 import com.grookage.leia.models.annotations.SchemaDefinition;
-import com.grookage.leia.models.attributes.*;
+import com.grookage.leia.models.attributes.ArrayAttribute;
+import com.grookage.leia.models.attributes.DateAttribute;
+import com.grookage.leia.models.attributes.EnumAttribute;
+import com.grookage.leia.models.attributes.MapAttribute;
+import com.grookage.leia.models.attributes.ObjectAttribute;
+import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.attributes.SchemaReferenceAttribute;
+import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.schema.SchemaKey;
 import com.grookage.leia.models.schema.ingestion.CreateSchemaRequest;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.ClassUtils;
+import org.reflections.Reflections;
 
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.AnnotatedArrayType;
+import java.lang.reflect.AnnotatedParameterizedType;
+import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -52,7 +72,8 @@ public class SchemaBuilder {
 
     private static final String ELEMENT = "element";
 
-    public Optional<CreateSchemaRequest> buildSchemaRequest(final Class<?> klass) {
+    public Optional<CreateSchemaRequest> buildSchemaRequest(final Class<?> klass,
+                                                            final Reflections reflections) {
         if (Objects.isNull(klass) || !klass.isAnnotationPresent(SchemaDefinition.class)) {
             return Optional.empty();
         }
@@ -70,6 +91,8 @@ public class SchemaBuilder {
                 .description(schemaDefinition.description())
                 .schemaType(schemaDefinition.schemaType())
                 .validationType(schemaDefinition.validation())
+                .childReferences(BuilderUtils.childReferences(klass, reflections))
+                .parentReference(BuilderUtils.parentReference(klass))
                 .attributes(getSchemaAttributes(klass))
                 .tags(Arrays.asList(schemaDefinition.tags()))
                 .build()
@@ -77,7 +100,8 @@ public class SchemaBuilder {
     }
 
     public Set<SchemaAttribute> getSchemaAttributes(final Class<?> klass) {
-        return FieldUtils.getAllFields(klass)
+        final var fields = BuilderUtils.getFields(klass);
+        return fields
                 .stream()
                 .map(field -> schemaAttribute(field, new TypeVariableContext()))
                 .collect(Collectors.toSet());
@@ -95,6 +119,11 @@ public class SchemaBuilder {
                                             final boolean optional,
                                             final Set<QualifierInfo> qualifiers,
                                             final TypeVariableContext typeVariableContext) {
+        final var schemaReference = BuilderUtils.isSchemaReference(annotatedType);
+        if (schemaReference) {
+            return new SchemaReferenceAttribute(name, optional, qualifiers, BuilderUtils.getSchemaReference(annotatedType));
+        }
+
         final var type = annotatedType.getType();
         // Handle Class instances (eg. String, Enum classes, Complex POJO Objects etc.)
         if (type instanceof Class<?> klass) {
@@ -106,6 +135,7 @@ public class SchemaBuilder {
             return handleParameterizedType((AnnotatedParameterizedType) annotatedType, name, qualifiers, optional,
                     typeVariableContext);
         }
+
 
         // Handle GenericArrayType (e.g., T[], List<T[]>)
         if (type instanceof GenericArrayType) {
@@ -123,7 +153,6 @@ public class SchemaBuilder {
                                                     final TypeVariableContext typeVariableContext) {
         final var parameterizedType = (ParameterizedType) annotatedParameterizedType.getType();
         final var rawType = (Class<?>) parameterizedType.getRawType();
-
         // Handle List<T> or Set<T>
         if (ClassUtils.isAssignable(rawType, Collection.class)) {
             return handleCollection(annotatedParameterizedType, name, qualifiers, optional, typeVariableContext);
@@ -138,7 +167,7 @@ public class SchemaBuilder {
         // Extract and convert fields with resolved types
         // Capture generic type variables of the class from the parent context
         final var childContext = TypeVariableContext.from(rawType, annotatedParameterizedType, typeVariableContext);
-        final var fieldAttributes = FieldUtils.getAllFields(rawType)
+        final var fieldAttributes = ReflectionUtils.getAllFields(rawType)
                 .stream()
                 .map(field -> schemaAttribute(field, childContext)) // Resolves TypeVariable<T>
                 .collect(Collectors.toSet());
@@ -159,7 +188,7 @@ public class SchemaBuilder {
                 qualifiers,
                 schemaAttribute(annotatedKeyType, "key", BuilderUtils.isOptional(annotatedKeyType),
                         BuilderUtils.getQualifiers(annotatedKeyType), typeVariableContext),
-                schemaAttribute(annotatedValueType, "value",  BuilderUtils.isOptional(annotatedKeyType),
+                schemaAttribute(annotatedValueType, "value", BuilderUtils.isOptional(annotatedKeyType),
                         BuilderUtils.getQualifiers(annotatedKeyType), typeVariableContext)
         );
     }
@@ -174,7 +203,7 @@ public class SchemaBuilder {
                 name,
                 optional,
                 qualifiers,
-                schemaAttribute(annotatedElementType, ELEMENT,  BuilderUtils.isOptional(annotatedElementType),
+                schemaAttribute(annotatedElementType, ELEMENT, BuilderUtils.isOptional(annotatedElementType),
                         BuilderUtils.getQualifiers(annotatedElementType), typeVariableContext)
         );
     }
@@ -189,8 +218,8 @@ public class SchemaBuilder {
                 name,
                 optional,
                 qualifiers,
-                schemaAttribute(annotatedComponentType, ELEMENT,  BuilderUtils.isOptional(annotatedComponentType),
-                        BuilderUtils.getQualifiers(annotatedComponentType),  typeVariableContext)
+                schemaAttribute(annotatedComponentType, ELEMENT, BuilderUtils.isOptional(annotatedComponentType),
+                        BuilderUtils.getQualifiers(annotatedComponentType), typeVariableContext)
         );
     }
 
@@ -199,6 +228,9 @@ public class SchemaBuilder {
                                             final String name,
                                             final Set<QualifierInfo> qualifiers,
                                             final boolean optional) {
+        if (BuilderUtils.isSchemaDefinition(klass)) {
+            throw SchemaValidationException.error(ValidationErrorCode.INVALID_SCHEMAS, String.format("Use schema reference annotation for class:%s", klass.getSimpleName()));
+        }
         if (klass == String.class) {
             return new StringAttribute(name, optional, qualifiers);
         }

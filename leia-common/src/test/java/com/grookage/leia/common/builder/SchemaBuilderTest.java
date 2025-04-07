@@ -1,37 +1,59 @@
 package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.LeiaTestUtils;
-import com.grookage.leia.common.stubs.*;
-import com.grookage.leia.models.annotations.SchemaDefinition;
-import com.grookage.leia.models.annotations.attribute.Optional;
-import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
-import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
-import com.grookage.leia.models.attributes.*;
+import com.grookage.leia.common.exception.SchemaValidationException;
+import com.grookage.leia.common.stubs.NestedStub;
+import com.grookage.leia.common.stubs.RecordStub;
+import com.grookage.leia.common.stubs.TestPrimitiveStub;
+import com.grookage.leia.common.stubs.classes.TestAbstractClass;
+import com.grookage.leia.common.stubs.TestEnum;
+import com.grookage.leia.common.stubs.TestGenericStub;
+import com.grookage.leia.common.stubs.TestObjectStub;
+import com.grookage.leia.common.stubs.TestParameterizedStub;
+import com.grookage.leia.common.stubs.TestRawCollectionStub;
+import com.grookage.leia.common.stubs.classes.TestObjectClass;
+import com.grookage.leia.common.stubs.classes.abstracts.invalid.InvalidAbstractImpl1;
+import com.grookage.leia.common.stubs.classes.abstracts.valid.ValidAbstractImpl1;
+import com.grookage.leia.common.stubs.classes.abstracts.valid.ValidAbstractSchema;
+import com.grookage.leia.common.utils.BuilderUtils;
+import com.grookage.leia.common.utils.Constants;
+import com.grookage.leia.models.attributes.ArrayAttribute;
+import com.grookage.leia.models.attributes.BooleanAttribute;
+import com.grookage.leia.models.attributes.EnumAttribute;
+import com.grookage.leia.models.attributes.IntegerAttribute;
+import com.grookage.leia.models.attributes.MapAttribute;
+import com.grookage.leia.models.attributes.ObjectAttribute;
+import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.EncryptedQualifier;
 import com.grookage.leia.models.qualifiers.PIIQualifier;
 import com.grookage.leia.models.schema.SchemaType;
 import com.grookage.leia.models.schema.SchemaValidationType;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.reflections.Reflections;
 
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
 class SchemaBuilderTest {
+    private final Reflections reflections = new Reflections("com.grookage.leia.common.stubs");
     @SneakyThrows
     @Test
     void testSchemaRequest() {
-        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestRecord.class)
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestObjectClass.class, reflections)
                 .orElse(null);
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(7, schemaCreateRequest.getAttributes().size());
-        final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestRecord.class);
-        Assertions.assertEquals(TestRecord.NAME, schemaCreateRequest.getSchemaKey().getSchemaName());
-        Assertions.assertEquals(TestRecord.NAMESPACE, schemaCreateRequest.getSchemaKey().getNamespace());
-        Assertions.assertEquals(TestRecord.DESCRIPTION, schemaCreateRequest.getDescription());
+        final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestObjectClass.class);
+        Assertions.assertEquals(TestObjectClass.DESCRIPTION, schemaCreateRequest.getDescription());
+        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaKey().getSchemaName());
+        Assertions.assertEquals(Constants.ORG_ID, schemaCreateRequest.getSchemaKey().getOrgId());
+        Assertions.assertEquals(Constants.NAMESPACE, schemaCreateRequest.getSchemaKey().getNamespace());
+        Assertions.assertEquals(Constants.TENANT, schemaCreateRequest.getSchemaKey().getTenantId());
+        Assertions.assertEquals(Constants.TYPE, schemaCreateRequest.getSchemaKey().getType());
         Assertions.assertEquals(SchemaType.JSON, schemaCreateRequest.getSchemaType());
         Assertions.assertEquals(SchemaValidationType.MATCHING, schemaCreateRequest.getValidationType());
         Assertions.assertEquals(schemaAttributes.size(), schemaCreateRequest.getAttributes().size());
@@ -39,14 +61,55 @@ class SchemaBuilderTest {
     }
 
     @Test
+    @DisplayName("Test Schema Payload with Abstract Class field")
+    void testSchemaPayload_withAbstract() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestAbstractClass.class, reflections)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(4, schemaCreateRequest.getAttributes().size());
+    }
+
+    @Test
+    @DisplayName("Test Abstract Class Schema Payload")
+    void testAbstractSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractSchema.class, reflections)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(5, schemaCreateRequest.getAttributes().size());
+        Assertions.assertEquals(2, schemaCreateRequest.getChildReferences().size());
+        Assertions.assertNull(schemaCreateRequest.getParentReference());
+    }
+
+    @Test
+    @DisplayName("Test Abstract Class Impl Schema Payload")
+    void testAbstractImplSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractImpl1.class, reflections)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(2, schemaCreateRequest.getAttributes().size());
+        Assertions.assertTrue(schemaCreateRequest.getChildReferences().isEmpty());
+        final var parentReference = schemaCreateRequest.getParentReference();
+        Assertions.assertNotNull(parentReference);
+        Assertions.assertEquals(parentReference, BuilderUtils.getSchemaReference(ValidAbstractSchema.class));
+    }
+
+    @Test
+    void testInvalidAbstractImplSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractImpl1.class, reflections)
+                .orElse(null);
+        final var validationException = Assertions.assertThrows(SchemaValidationException.class,
+                () -> SchemaBuilder.buildSchemaRequest(InvalidAbstractImpl1.class, reflections));
+    }
+
+    @Test
     void testSchemaRequest_WithInvalidClass() {
-        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(null).isEmpty());
-        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(TestObject.class).isEmpty());
+        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(null, reflections).isEmpty());
+        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(TestObject.class, reflections).isEmpty());
     }
 
     @Test
     void testSchemaAttributes_WithPrimitiveClass() {
-        final var schemaAttributeSet = SchemaBuilder.getSchemaAttributes(PrimitiveTestClass.class);
+        final var schemaAttributeSet = SchemaBuilder.getSchemaAttributes(TestPrimitiveStub.class);
         Assertions.assertNotNull(schemaAttributeSet);
         Assertions.assertEquals(9, schemaAttributeSet.size());
         final var nameAttribute = new StringAttribute("name", true, new HashSet<>());
@@ -224,52 +287,6 @@ class SchemaBuilderTest {
         final var arrayAttribute = new ArrayAttribute("rArray", false, Set.of(),
                 new IntegerAttribute("element", false, Set.of()));
         LeiaTestUtils.assertEquals(arrayAttribute, LeiaTestUtils.filter(nestedAttributes, "rArray").orElse(null));
-    }
-
-    static class PrimitiveTestClass {
-        @Optional
-        String name;
-        int id;
-        char c;
-        short s;
-        long l;
-        byte b;
-        double d;
-        boolean bl;
-        float f;
-    }
-
-    @SchemaDefinition(
-            name = TestRecord.NAME,
-            namespace = TestRecord.NAMESPACE,
-            version = TestRecord.VERSION,
-            description = TestRecord.DESCRIPTION,
-            schemaType = SchemaType.JSON,
-            validation = SchemaValidationType.MATCHING,
-            orgId = TestRecord.ORG,
-            tenantId = TestRecord.TENANT,
-            type = TestRecord.TYPE,
-            tags = {"foxtrot", "audit"}
-    )
-    static class TestRecord {
-        static final String NAME = "TEST_RECORD";
-        static final String NAMESPACE = "test";
-        static final String ORG = "testOrg";
-        static final String TENANT = "tenantId";
-        static final String TYPE = "default";
-        static final String VERSION = "v1";
-        static final String DESCRIPTION = "Test Record";
-
-        int id;
-        String name;
-        @PII
-        @Encrypted
-        String accountNumber;
-        long ttl;
-        @Optional
-        String accountId;
-        Date date;
-        LocalDateTime localDateTime;
     }
 
     static class TestObject {

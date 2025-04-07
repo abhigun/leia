@@ -47,6 +47,8 @@ public class SchemaDetails {
     @NotNull
     SchemaType schemaType;
     SchemaValidationType validationType = SchemaValidationType.MATCHING;
+    SchemaReference parentReference;
+    List<SchemaReference> childReferences;
     @NotEmpty
     Set<SchemaAttribute> attributes;
     @Builder.Default
