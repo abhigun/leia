@@ -8,7 +8,15 @@ import com.grookage.leia.models.annotations.attribute.Optional;
 import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
 import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
 import com.grookage.leia.models.annotations.attribute.qualifiers.ShortLived;
-import com.grookage.leia.models.attributes.*;
+import com.grookage.leia.models.attributes.BooleanAttribute;
+import com.grookage.leia.models.attributes.ByteAttribute;
+import com.grookage.leia.models.attributes.CharacterAttribute;
+import com.grookage.leia.models.attributes.DoubleAttribute;
+import com.grookage.leia.models.attributes.FloatAttribute;
+import com.grookage.leia.models.attributes.IntegerAttribute;
+import com.grookage.leia.models.attributes.LongAttribute;
+import com.grookage.leia.models.attributes.SchemaAttribute;
+import com.grookage.leia.models.attributes.ShortAttribute;
 import com.grookage.leia.models.qualifiers.EncryptedQualifier;
 import com.grookage.leia.models.qualifiers.PIIQualifier;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
@@ -21,7 +29,11 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @UtilityClass
@@ -73,7 +85,7 @@ public class BuilderUtils {
         }
 
         // Handling Sub classes
-        if (isValidSchemaHierarchy(klass) && isSchemaReference(klass.getSuperclass())) {
+        if (isValidSchemaHierarchy(klass) && isSchemaDefinition(klass.getSuperclass())) {
             return ReflectionUtils.getClassFields(klass);
         }
         return ReflectionUtils.getAllFields(klass);
@@ -114,14 +126,6 @@ public class BuilderUtils {
         return null;
     }
 
-    public boolean isOptional(final AnnotatedType annotatedType) {
-        return annotatedType.isAnnotationPresent(Optional.class);
-    }
-
-    public boolean isSchemaReference(final Class<?> klass) {
-        return klass.isAnnotationPresent(SchemaRef.class);
-    }
-
     public boolean isSchemaReference(final AnnotatedType annotatedType) {
         return annotatedType.isAnnotationPresent(SchemaRef.class);
     }
@@ -134,8 +138,45 @@ public class BuilderUtils {
         return klass.isAnnotationPresent(Optional.class);
     }
 
+    public boolean isOptional(final AnnotatedType annotatedType) {
+        return annotatedType.isAnnotationPresent(Optional.class);
+    }
+
+
     public boolean isOptional(final Field field) {
         return field.isAnnotationPresent(Optional.class);
+    }
+
+    public SchemaReference getSchemaReference(final Class<?> klass) {
+        if (!klass.isAnnotationPresent(SchemaDefinition.class)) {
+            return null;
+        }
+        final var schemaDefinition = klass.getAnnotation(SchemaDefinition.class);
+        return SchemaReference.from(schemaDefinition);
+    }
+
+    public SchemaReference getSchemaReference(final AnnotatedType annotatedType) {
+        if (!isSchemaReference(annotatedType)) {
+            return null;
+        }
+
+        final var klass = getRawType(annotatedType);
+        return getSchemaReference(klass);
+    }
+
+    public Set<QualifierInfo> getQualifiers(final Class<?> klass) {
+        Set<QualifierInfo> qualifiers = new HashSet<>();
+        if (klass.isAnnotationPresent(Encrypted.class)) {
+            qualifiers.add(new EncryptedQualifier());
+        }
+        if (klass.isAnnotationPresent(PII.class)) {
+            qualifiers.add(new PIIQualifier());
+        }
+        if (klass.isAnnotationPresent(ShortLived.class)) {
+            final var shortLived = klass.getAnnotation(ShortLived.class);
+            qualifiers.add(new ShortLivedQualifier(shortLived.ttlSeconds()));
+        }
+        return qualifiers;
     }
 
     public Set<QualifierInfo> getQualifiers(final AnnotatedType annotatedType) {
@@ -168,48 +209,18 @@ public class BuilderUtils {
         return qualifiers;
     }
 
-    public SchemaReference getSchemaReference(final Class<?> klass) {
-        if (!klass.isAnnotationPresent(SchemaDefinition.class)) {
-            return null;
-        }
-        final var schemaDefinition = klass.getAnnotation(SchemaDefinition.class);
-        return SchemaReference.builder()
-                .namespace(schemaDefinition.namespace())
-                .name(schemaDefinition.name())
-                .build();
-    }
-
-    public SchemaReference getSchemaReference(final AnnotatedType annotatedType) {
-        if (!isSchemaReference(annotatedType)) {
-            return null;
-        }
-
-        final var klass = getRawType(annotatedType);
-        return getSchemaReference(klass);
-    }
-
-    public Set<QualifierInfo> getQualifiers(final Class<?> klass) {
-        Set<QualifierInfo> qualifiers = new HashSet<>();
-        if (klass.isAnnotationPresent(Encrypted.class)) {
-            qualifiers.add(new EncryptedQualifier());
-        }
-        if (klass.isAnnotationPresent(PII.class)) {
-            qualifiers.add(new PIIQualifier());
-        }
-        if (klass.isAnnotationPresent(ShortLived.class)) {
-            final var shortLived = klass.getAnnotation(ShortLived.class);
-            qualifiers.add(new ShortLivedQualifier(shortLived.ttlSeconds()));
-        }
-        return qualifiers;
-    }
 
     private boolean isValidSchemaHierarchy(Class<?> klass) {
         boolean nonSchemaDef = false;
+        Class<?> nonSchemaKlass = null;
         for (Class<?> c = klass.getSuperclass(); c != null && c != Object.class; c = c.getSuperclass()) {
             if (!isSchemaDefinition(c)) {
                 nonSchemaDef = true;
+                nonSchemaKlass = c;
             } else if (nonSchemaDef) {
-                return false;
+                throw SchemaValidationException.error(ValidationErrorCode.INVALID_SCHEMAS,
+                        String.format("Schema Definition missing on %s from path:%s", nonSchemaKlass.getSimpleName(),
+                                klass.getSimpleName()));
             }
         }
         return true;

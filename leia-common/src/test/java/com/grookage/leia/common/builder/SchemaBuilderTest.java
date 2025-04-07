@@ -1,6 +1,7 @@
 package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.LeiaTestUtils;
+import com.grookage.leia.common.exception.SchemaValidationException;
 import com.grookage.leia.common.stubs.NestedStub;
 import com.grookage.leia.common.stubs.RecordStub;
 import com.grookage.leia.common.stubs.TestPrimitiveStub;
@@ -11,10 +12,11 @@ import com.grookage.leia.common.stubs.TestObjectStub;
 import com.grookage.leia.common.stubs.TestParameterizedStub;
 import com.grookage.leia.common.stubs.TestRawCollectionStub;
 import com.grookage.leia.common.stubs.classes.TestObjectClass;
-import com.grookage.leia.models.annotations.SchemaDefinition;
-import com.grookage.leia.models.annotations.attribute.Optional;
-import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
-import com.grookage.leia.models.annotations.attribute.qualifiers.PII;
+import com.grookage.leia.common.stubs.classes.abstracts.invalid.InvalidAbstractImpl1;
+import com.grookage.leia.common.stubs.classes.abstracts.valid.ValidAbstractImpl1;
+import com.grookage.leia.common.stubs.classes.abstracts.valid.ValidAbstractSchema;
+import com.grookage.leia.common.utils.BuilderUtils;
+import com.grookage.leia.common.utils.Constants;
 import com.grookage.leia.models.attributes.ArrayAttribute;
 import com.grookage.leia.models.attributes.BooleanAttribute;
 import com.grookage.leia.models.attributes.EnumAttribute;
@@ -29,11 +31,10 @@ import com.grookage.leia.models.schema.SchemaType;
 import com.grookage.leia.models.schema.SchemaValidationType;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.reflections.Reflections;
 
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -47,9 +48,12 @@ class SchemaBuilderTest {
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(7, schemaCreateRequest.getAttributes().size());
         final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestObjectClass.class);
-        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaKey().getSchemaName());
-        Assertions.assertEquals(TestObjectClass.NAMESPACE, schemaCreateRequest.getSchemaKey().getNamespace());
         Assertions.assertEquals(TestObjectClass.DESCRIPTION, schemaCreateRequest.getDescription());
+        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaKey().getSchemaName());
+        Assertions.assertEquals(Constants.ORG_ID, schemaCreateRequest.getSchemaKey().getOrgId());
+        Assertions.assertEquals(Constants.NAMESPACE, schemaCreateRequest.getSchemaKey().getNamespace());
+        Assertions.assertEquals(Constants.TENANT, schemaCreateRequest.getSchemaKey().getTenantId());
+        Assertions.assertEquals(Constants.TYPE, schemaCreateRequest.getSchemaKey().getType());
         Assertions.assertEquals(SchemaType.JSON, schemaCreateRequest.getSchemaType());
         Assertions.assertEquals(SchemaValidationType.MATCHING, schemaCreateRequest.getValidationType());
         Assertions.assertEquals(schemaAttributes.size(), schemaCreateRequest.getAttributes().size());
@@ -57,12 +61,44 @@ class SchemaBuilderTest {
     }
 
     @Test
-    void testAbstractClassSchema() {
+    @DisplayName("Test Schema Payload with Abstract Class field")
+    void testSchemaPayload_withAbstract() {
         final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestAbstractClass.class, reflections)
                 .orElse(null);
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(4, schemaCreateRequest.getAttributes().size());
+    }
 
+    @Test
+    @DisplayName("Test Abstract Class Schema Payload")
+    void testAbstractSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractSchema.class, reflections)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(5, schemaCreateRequest.getAttributes().size());
+        Assertions.assertEquals(2, schemaCreateRequest.getChildReferences().size());
+        Assertions.assertNull(schemaCreateRequest.getParentReference());
+    }
+
+    @Test
+    @DisplayName("Test Abstract Class Impl Schema Payload")
+    void testAbstractImplSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractImpl1.class, reflections)
+                .orElse(null);
+        Assertions.assertNotNull(schemaCreateRequest);
+        Assertions.assertEquals(2, schemaCreateRequest.getAttributes().size());
+        Assertions.assertTrue(schemaCreateRequest.getChildReferences().isEmpty());
+        final var parentReference = schemaCreateRequest.getParentReference();
+        Assertions.assertNotNull(parentReference);
+        Assertions.assertEquals(parentReference, BuilderUtils.getSchemaReference(ValidAbstractSchema.class));
+    }
+
+    @Test
+    void testInvalidAbstractImplSchemaPayload() {
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(ValidAbstractImpl1.class, reflections)
+                .orElse(null);
+        final var validationException = Assertions.assertThrows(SchemaValidationException.class,
+                () -> SchemaBuilder.buildSchemaRequest(InvalidAbstractImpl1.class, reflections));
     }
 
     @Test

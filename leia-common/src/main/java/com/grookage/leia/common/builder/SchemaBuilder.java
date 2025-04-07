@@ -228,7 +228,7 @@ public class SchemaBuilder {
                                             final String name,
                                             final Set<QualifierInfo> qualifiers,
                                             final boolean optional) {
-        if (BuilderUtils.isSchemaReference(klass)) {
+        if (BuilderUtils.isSchemaDefinition(klass)) {
             throw SchemaValidationException.error(ValidationErrorCode.INVALID_SCHEMAS, String.format("Use schema reference annotation for class:%s", klass.getSimpleName()));
         }
         if (klass == String.class) {
