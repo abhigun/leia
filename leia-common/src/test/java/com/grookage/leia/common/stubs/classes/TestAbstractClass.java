@@ -1,4 +1,4 @@
-package com.grookage.leia.common.stubs;
+package com.grookage.leia.common.stubs.classes;
 
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.annotations.SchemaRef;

@@ -17,6 +17,8 @@
 package com.grookage.leia.common.builder;
 
 import com.grookage.leia.common.context.TypeVariableContext;
+import com.grookage.leia.common.exception.SchemaValidationException;
+import com.grookage.leia.common.exception.ValidationErrorCode;
 import com.grookage.leia.common.utils.BuilderUtils;
 import com.grookage.leia.common.utils.ReflectionUtils;
 import com.grookage.leia.common.utils.SchemaConstants;
@@ -30,10 +32,10 @@ import com.grookage.leia.models.attributes.SchemaAttribute;
 import com.grookage.leia.models.attributes.SchemaReferenceAttribute;
 import com.grookage.leia.models.attributes.StringAttribute;
 import com.grookage.leia.models.qualifiers.QualifierInfo;
-import com.grookage.leia.models.schema.SchemaReference;
 import com.grookage.leia.models.schema.ingestion.CreateSchemaRequest;
 import lombok.experimental.UtilityClass;
 import org.apache.commons.lang3.ClassUtils;
+import org.reflections.Reflections;
 
 import java.lang.reflect.AnnotatedArrayType;
 import java.lang.reflect.AnnotatedParameterizedType;
@@ -43,7 +45,6 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -70,7 +71,8 @@ public class SchemaBuilder {
 
     private static final String ELEMENT = "element";
 
-    public Optional<CreateSchemaRequest> buildSchemaRequest(final Class<?> klass) {
+    public Optional<CreateSchemaRequest> buildSchemaRequest(final Class<?> klass,
+                                                            final Reflections reflections) {
         if (Objects.isNull(klass) || !klass.isAnnotationPresent(SchemaDefinition.class)) {
             return Optional.empty();
         }
@@ -81,6 +83,8 @@ public class SchemaBuilder {
                 .description(schemaDefinition.description())
                 .schemaType(schemaDefinition.type())
                 .validationType(schemaDefinition.validation())
+                .childReferences(BuilderUtils.childReferences(klass, reflections))
+                .parentReference(BuilderUtils.parentReference(klass))
                 .attributes(getSchemaAttributes(klass))
                 .tags(Arrays.asList(schemaDefinition.tags()))
                 .build()
@@ -216,6 +220,9 @@ public class SchemaBuilder {
                                             final String name,
                                             final Set<QualifierInfo> qualifiers,
                                             final boolean optional) {
+        if (BuilderUtils.isSchemaReference(klass)) {
+            throw SchemaValidationException.error(ValidationErrorCode.INVALID_SCHEMAS, String.format("Use schema reference annotation for class:%s", klass.getSimpleName()));
+        }
         if (klass == String.class) {
             return new StringAttribute(name, optional, qualifiers);
         }

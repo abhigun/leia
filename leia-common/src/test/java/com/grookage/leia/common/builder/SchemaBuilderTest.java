@@ -3,12 +3,14 @@ package com.grookage.leia.common.builder;
 import com.grookage.leia.common.LeiaTestUtils;
 import com.grookage.leia.common.stubs.NestedStub;
 import com.grookage.leia.common.stubs.RecordStub;
-import com.grookage.leia.common.stubs.TestAbstractClass;
+import com.grookage.leia.common.stubs.TestPrimitiveStub;
+import com.grookage.leia.common.stubs.classes.TestAbstractClass;
 import com.grookage.leia.common.stubs.TestEnum;
 import com.grookage.leia.common.stubs.TestGenericStub;
 import com.grookage.leia.common.stubs.TestObjectStub;
 import com.grookage.leia.common.stubs.TestParameterizedStub;
 import com.grookage.leia.common.stubs.TestRawCollectionStub;
+import com.grookage.leia.common.stubs.classes.TestObjectClass;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.annotations.attribute.Optional;
 import com.grookage.leia.models.annotations.attribute.qualifiers.Encrypted;
@@ -28,6 +30,7 @@ import com.grookage.leia.models.schema.SchemaValidationType;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.reflections.Reflections;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -35,17 +38,18 @@ import java.util.HashSet;
 import java.util.Set;
 
 class SchemaBuilderTest {
+    private final Reflections reflections = new Reflections("com.grookage.leia.common.stubs");
     @SneakyThrows
     @Test
     void testSchemaRequest() {
-        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestRecord.class)
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestObjectClass.class, reflections)
                 .orElse(null);
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(7, schemaCreateRequest.getAttributes().size());
-        final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestRecord.class);
-        Assertions.assertEquals(TestRecord.NAME, schemaCreateRequest.getSchemaName());
-        Assertions.assertEquals(TestRecord.NAMESPACE, schemaCreateRequest.getNamespace());
-        Assertions.assertEquals(TestRecord.DESCRIPTION, schemaCreateRequest.getDescription());
+        final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestObjectClass.class);
+        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaName());
+        Assertions.assertEquals(TestObjectClass.NAMESPACE, schemaCreateRequest.getNamespace());
+        Assertions.assertEquals(TestObjectClass.DESCRIPTION, schemaCreateRequest.getDescription());
         Assertions.assertEquals(SchemaType.JSON, schemaCreateRequest.getSchemaType());
         Assertions.assertEquals(SchemaValidationType.MATCHING, schemaCreateRequest.getValidationType());
         Assertions.assertEquals(schemaAttributes.size(), schemaCreateRequest.getAttributes().size());
@@ -54,7 +58,7 @@ class SchemaBuilderTest {
 
     @Test
     void testAbstractClassSchema() {
-        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestAbstractClass.class)
+        final var schemaCreateRequest = SchemaBuilder.buildSchemaRequest(TestAbstractClass.class, reflections)
                 .orElse(null);
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(4, schemaCreateRequest.getAttributes().size());
@@ -63,13 +67,13 @@ class SchemaBuilderTest {
 
     @Test
     void testSchemaRequest_WithInvalidClass() {
-        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(null).isEmpty());
-        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(TestObject.class).isEmpty());
+        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(null, reflections).isEmpty());
+        Assertions.assertTrue(SchemaBuilder.buildSchemaRequest(TestObject.class, reflections).isEmpty());
     }
 
     @Test
     void testSchemaAttributes_WithPrimitiveClass() {
-        final var schemaAttributeSet = SchemaBuilder.getSchemaAttributes(PrimitiveTestClass.class);
+        final var schemaAttributeSet = SchemaBuilder.getSchemaAttributes(TestPrimitiveStub.class);
         Assertions.assertNotNull(schemaAttributeSet);
         Assertions.assertEquals(9, schemaAttributeSet.size());
         final var nameAttribute = new StringAttribute("name", true, new HashSet<>());
@@ -247,46 +251,6 @@ class SchemaBuilderTest {
         final var arrayAttribute = new ArrayAttribute("rArray", false, Set.of(),
                 new IntegerAttribute("element", false, Set.of()));
         LeiaTestUtils.assertEquals(arrayAttribute, LeiaTestUtils.filter(nestedAttributes, "rArray").orElse(null));
-    }
-
-    static class PrimitiveTestClass {
-        @Optional
-        String name;
-        int id;
-        char c;
-        short s;
-        long l;
-        byte b;
-        double d;
-        boolean bl;
-        float f;
-    }
-
-    @SchemaDefinition(
-            name = TestRecord.NAME,
-            namespace = TestRecord.NAMESPACE,
-            version = TestRecord.VERSION,
-            description = TestRecord.DESCRIPTION,
-            type = SchemaType.JSON,
-            validation = SchemaValidationType.MATCHING,
-            tags = {"foxtrot", "audit"}
-    )
-    static class TestRecord {
-        static final String NAME = "TEST_RECORD";
-        static final String NAMESPACE = "test";
-        static final String VERSION = "v1";
-        static final String DESCRIPTION = "Test Record";
-
-        int id;
-        String name;
-        @PII
-        @Encrypted
-        String accountNumber;
-        long ttl;
-        @Optional
-        String accountId;
-        Date date;
-        LocalDateTime localDateTime;
     }
 
     static class TestObject {

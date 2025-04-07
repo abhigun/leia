@@ -2,6 +2,10 @@ package com.grookage.leia.common.utils;
 
 import com.grookage.leia.common.exception.ValidationErrorCode;
 import com.grookage.leia.common.stubs.*;
+import com.grookage.leia.common.stubs.TestGenericStub;
+import com.grookage.leia.common.stubs.classes.NestedAbstractClass;
+import com.grookage.leia.common.stubs.classes.NestedAbstractClassImpl;
+import com.grookage.leia.common.stubs.classes.TestAbstractClass;
 import com.grookage.leia.models.ResourceHelper;
 import com.grookage.leia.models.attributes.*;
 import com.grookage.leia.models.schema.SchemaDetails;

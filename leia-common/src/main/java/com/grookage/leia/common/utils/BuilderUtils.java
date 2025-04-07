@@ -1,5 +1,7 @@
 package com.grookage.leia.common.utils;
 
+import com.grookage.leia.common.exception.SchemaValidationException;
+import com.grookage.leia.common.exception.ValidationErrorCode;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.annotations.SchemaRef;
 import com.grookage.leia.models.annotations.attribute.Optional;
@@ -13,17 +15,13 @@ import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.qualifiers.ShortLivedQualifier;
 import com.grookage.leia.models.schema.SchemaReference;
 import lombok.experimental.UtilityClass;
+import org.reflections.Reflections;
 
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @UtilityClass
@@ -67,27 +65,40 @@ public class BuilderUtils {
                 .collect(Collectors.toSet());
     }
 
-    public boolean isValidChain(Class<?> klass) {
-        if (Objects.isNull(klass.getSuperclass())) {
-            return true;
-        }
-
-        final var current = klass.getSuperclass();
-        final var lastRef = isSchemaReference(klass);
-        for (Class<?> c = klass; c != null; c = c.getSuperclass()) {
-            if (!lastRef && isSchemaReference(current)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     public List<Field> getFields(Class<?> klass) {
-        if (isValidChain(klass)) {
-            return FieldUtils.getClassFields(klass);
+        // Handling concrete classes and abstract classes with no parent classes
+        if (Objects.isNull(klass.getSuperclass()) || klass.getSuperclass().equals(Object.class)) {
+            return ReflectionUtils.getAllFields(klass);
         }
-        return FieldUtils.getAllFields(klass);
+
+        // Handling Sub classes
+        if (isValidSchemaHierarchy(klass) && isSchemaReference(klass.getSuperclass())) {
+            return ReflectionUtils.getClassFields(klass);
+        }
+        return ReflectionUtils.getAllFields(klass);
+    }
+
+    public SchemaReference parentReference(Class<?> klass) {
+        // Handling concrete classes and abstract classes with no parent classes
+        if (Objects.isNull(klass.getSuperclass()) || klass.getSuperclass().equals(Object.class)) {
+            return null;
+        }
+
+        return getSchemaReference(klass.getSuperclass());
+    }
+
+    public List<SchemaReference> childReferences(Class<?> klass, Reflections reflections) {
+        final var subTypes = ReflectionUtils.getImmediateSubTypes(reflections, klass);
+        return subTypes.stream().map(aClass -> {
+            final var schemaReference = getSchemaReference(aClass);
+            if (Objects.isNull(schemaReference)) {
+                throw SchemaValidationException.error(ValidationErrorCode.INVALID_SCHEMAS,
+                        String.format("Sub Type implementation Class :%s of Class :%s is not schema defined",
+                                aClass.getSimpleName(), klass.getSimpleName()));
+            }
+            return schemaReference;
+        }).toList();
     }
 
     public Class<?> getRawType(final AnnotatedType annotatedType) {
@@ -115,6 +126,10 @@ public class BuilderUtils {
         return annotatedType.isAnnotationPresent(SchemaRef.class);
     }
 
+    public boolean isSchemaDefinition(final Class<?> klass) {
+        return klass.isAnnotationPresent(SchemaDefinition.class);
+    }
+
     public boolean isOptional(final Class<?> klass) {
         return klass.isAnnotationPresent(Optional.class);
     }
@@ -122,6 +137,7 @@ public class BuilderUtils {
     public boolean isOptional(final Field field) {
         return field.isAnnotationPresent(Optional.class);
     }
+
     public Set<QualifierInfo> getQualifiers(final AnnotatedType annotatedType) {
         Set<QualifierInfo> qualifiers = new HashSet<>();
         if (annotatedType.isAnnotationPresent(Encrypted.class)) {
@@ -186,4 +202,17 @@ public class BuilderUtils {
         }
         return qualifiers;
     }
+
+    private boolean isValidSchemaHierarchy(Class<?> klass) {
+        boolean nonSchemaDef = false;
+        for (Class<?> c = klass.getSuperclass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            if (!isSchemaDefinition(c)) {
+                nonSchemaDef = true;
+            } else if (nonSchemaDef) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }
