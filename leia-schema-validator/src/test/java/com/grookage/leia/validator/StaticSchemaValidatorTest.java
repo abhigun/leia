@@ -68,9 +68,7 @@ class StaticSchemaValidatorTest {
                 .orElse(null);
         Assertions.assertNotNull(createSchemaRequest);
         return SchemaDetails.builder()
-                .namespace(schemaDefinition.namespace())
-                .schemaName(schemaDefinition.name())
-                .version(schemaDefinition.version())
+                .schemaKey(createSchemaRequest.getSchemaKey())
                 .schemaState(SchemaState.CREATED)
                 .schemaType(createSchemaRequest.getSchemaType())
                 .description(createSchemaRequest.getDescription())
@@ -87,6 +85,9 @@ class StaticSchemaValidatorTest {
                 .schemaName(schemaDefinition.name())
                 .namespace(schemaDefinition.namespace())
                 .version(schemaDefinition.version())
+                .orgId(schemaDefinition.orgId())
+                .tenantId(schemaDefinition.tenantId())
+                .type(schemaDefinition.type())
                 .build();
     }
 }

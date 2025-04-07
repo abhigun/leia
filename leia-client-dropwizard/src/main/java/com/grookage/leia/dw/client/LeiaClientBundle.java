@@ -17,14 +17,14 @@
 package com.grookage.leia.dw.client;
 
 import com.google.common.base.Preconditions;
+import com.grookage.korg.config.KorgHttpConfiguration;
 import com.grookage.leia.client.LeiaMessageProduceClient;
-import com.grookage.leia.client.datasource.NamespaceDataSource;
+import com.grookage.leia.client.datasource.LeiaClientRequest;
 import com.grookage.leia.client.refresher.LeiaClientRefresher;
 import com.grookage.leia.client.refresher.LeiaClientSupplier;
 import com.grookage.leia.mux.MessageProcessor;
 import com.grookage.leia.mux.targetvalidator.DefaultTargetValidator;
 import com.grookage.leia.mux.targetvalidator.TargetValidator;
-import com.grookage.leia.provider.config.LeiaHttpConfiguration;
 import com.grookage.leia.validator.LeiaSchemaValidator;
 import com.grookage.leia.validator.StaticSchemaValidator;
 import io.dropwizard.Configuration;
@@ -36,12 +36,14 @@ import lombok.Getter;
 import java.util.Set;
 import java.util.function.Supplier;
 
+@SuppressWarnings("unused")
 @Getter
 public abstract class LeiaClientBundle<T extends Configuration> implements ConfiguredBundle<T> {
 
     private LeiaMessageProduceClient producerClient;
+    private LeiaSchemaValidator validator;
 
-    protected abstract NamespaceDataSource getNamespaceDataSource(T configuration);
+    protected abstract Supplier<LeiaClientRequest> getClientRequestSupplier(T configuration);
 
     protected int getRefreshIntervalSeconds(T configuration) {
         return 30;
@@ -53,7 +55,7 @@ public abstract class LeiaClientBundle<T extends Configuration> implements Confi
 
     protected abstract boolean withProducerClient(T configuration);
 
-    protected abstract LeiaHttpConfiguration getHttpConfiguration(T configuration);
+    protected abstract KorgHttpConfiguration getHttpConfiguration(T configuration);
 
     protected abstract Set<String> getPackageRoots(T configuration);
 
@@ -77,8 +79,8 @@ public abstract class LeiaClientBundle<T extends Configuration> implements Confi
 
     @Override
     public void run(T configuration, Environment environment) {
-        final var namespaceDataSource = getNamespaceDataSource(configuration);
-        Preconditions.checkNotNull(namespaceDataSource, "Namespace data source can't be null");
+        final var clientRequestSupplier = getClientRequestSupplier(configuration);
+        Preconditions.checkNotNull(clientRequestSupplier, "Request Supplier can't be null");
         final var httpConfiguration = getHttpConfiguration(configuration);
         Preconditions.checkNotNull(httpConfiguration, "Http Configuration can't be null");
         final var packageRoots = getPackageRoots(configuration);
@@ -90,14 +92,14 @@ public abstract class LeiaClientBundle<T extends Configuration> implements Confi
                 .supplier(
                         LeiaClientSupplier.builder()
                                 .httpConfiguration(httpConfiguration)
-                                .namespaceDataSource(namespaceDataSource)
+                                .clientRequestSupplier(clientRequestSupplier)
                                 .authHeaderSupplier(getAuthHeaderSupplier(configuration))
                                 .build()
                 )
                 .refreshTimeInSeconds(dataRefreshSeconds)
                 .periodicRefresh(refreshEnabled(configuration))
                 .build();
-        final var validator = getSchemaValidator(configuration, clientRefresher);
+        this.validator = getSchemaValidator(configuration, clientRefresher);
         environment.lifecycle().manage(new Managed() {
             @Override
             public void start() {

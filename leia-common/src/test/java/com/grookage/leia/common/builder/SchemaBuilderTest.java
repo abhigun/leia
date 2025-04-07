@@ -47,8 +47,8 @@ class SchemaBuilderTest {
         Assertions.assertNotNull(schemaCreateRequest);
         Assertions.assertEquals(7, schemaCreateRequest.getAttributes().size());
         final var schemaAttributes = SchemaBuilder.getSchemaAttributes(TestObjectClass.class);
-        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaName());
-        Assertions.assertEquals(TestObjectClass.NAMESPACE, schemaCreateRequest.getNamespace());
+        Assertions.assertEquals(TestObjectClass.NAME, schemaCreateRequest.getSchemaKey().getSchemaName());
+        Assertions.assertEquals(TestObjectClass.NAMESPACE, schemaCreateRequest.getSchemaKey().getNamespace());
         Assertions.assertEquals(TestObjectClass.DESCRIPTION, schemaCreateRequest.getDescription());
         Assertions.assertEquals(SchemaType.JSON, schemaCreateRequest.getSchemaType());
         Assertions.assertEquals(SchemaValidationType.MATCHING, schemaCreateRequest.getValidationType());

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.grookage.leia.models.attributes.SchemaAttribute;
 import com.grookage.leia.models.schema.SchemaReference;
+import com.grookage.leia.models.schema.SchemaKey;
 import com.grookage.leia.models.schema.SchemaType;
 import com.grookage.leia.models.schema.SchemaValidationType;
 import com.grookage.leia.models.schema.transformer.TransformationTarget;
@@ -28,7 +29,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.constraints.NotBlank;
+import javax.validation.Valid;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
@@ -41,16 +42,14 @@ import java.util.Set;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateSchemaRequest {
-
-    @NotBlank
-    private String versionId;
-    @NotBlank
-    private String schemaName;
+    @Builder.Default
+    List<String> tags = new ArrayList<>();
+    @NotNull
+    @Valid
+    private SchemaKey schemaKey;
     @NotNull
     private SchemaType schemaType;
     private SchemaValidationType validationType = SchemaValidationType.MATCHING;
-    @NotBlank
-    private String namespace;
     private String description;
     @NotEmpty
     private Set<SchemaAttribute> attributes;
@@ -60,6 +59,4 @@ public class CreateSchemaRequest {
     @Builder.Default
     private Set<TransformationTarget> transformationTargets = Set.of();
     private JsonNode data;
-    @Builder.Default
-    List<String> tags = new ArrayList<>();
 }
