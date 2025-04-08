@@ -73,7 +73,7 @@ public class SchemaBuilder {
     private static final String ELEMENT = "element";
 
     public Optional<CreateSchemaRequest> buildSchemaRequest(final Class<?> klass,
-                                                            final Reflections reflections) {
+                                                            final Set<String> packageRoots) {
         if (Objects.isNull(klass) || !klass.isAnnotationPresent(SchemaDefinition.class)) {
             return Optional.empty();
         }
@@ -91,7 +91,7 @@ public class SchemaBuilder {
                 .description(schemaDefinition.description())
                 .schemaType(schemaDefinition.schemaType())
                 .validationType(schemaDefinition.validation())
-                .childReferences(BuilderUtils.childReferences(klass, reflections))
+                .childReferences(BuilderUtils.childReferences(klass, packageRoots))
                 .parentReference(BuilderUtils.parentReference(klass))
                 .attributes(getSchemaAttributes(klass))
                 .tags(Arrays.asList(schemaDefinition.tags()))
