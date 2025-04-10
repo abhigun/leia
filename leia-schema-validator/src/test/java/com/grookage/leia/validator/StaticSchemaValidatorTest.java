@@ -63,8 +63,7 @@ class StaticSchemaValidatorTest {
 
 
     private SchemaDetails toSchemaDetails(final Class<?> schemaKlass) {
-        final var schemaDefinition = schemaKlass.getAnnotation(SchemaDefinition.class);
-        final var createSchemaRequest = SchemaBuilder.buildSchemaRequest(schemaKlass, reflections)
+        final var createSchemaRequest = SchemaBuilder.buildSchemaRequest(schemaKlass, Set.of(PACKAGE))
                 .orElse(null);
         Assertions.assertNotNull(createSchemaRequest);
         return SchemaDetails.builder()

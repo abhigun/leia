@@ -23,6 +23,7 @@ import com.grookage.leia.models.qualifiers.QualifierInfo;
 import com.grookage.leia.models.qualifiers.ShortLivedQualifier;
 import com.grookage.leia.models.schema.SchemaReference;
 import lombok.experimental.UtilityClass;
+import org.reflections.Reflections;
 
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
@@ -99,7 +100,8 @@ public class BuilderUtils {
         return getSchemaReference(klass.getSuperclass());
     }
 
-    public List<SchemaReference> childReferences(Class<?> klass, Set<String> reflections) {
+    public List<SchemaReference> childReferences(Class<?> klass, Set<String> packageRoots) {
+        final var reflections = new Reflections(packageRoots);
         final var subTypes = ReflectionUtils.getImmediateSubTypes(reflections, klass);
         return subTypes.stream().map(aClass -> {
             final var schemaReference = getSchemaReference(aClass);

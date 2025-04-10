@@ -1,6 +1,5 @@
-package com.grookage.leia.common.stubs.classes.abstracts.valid;
+package com.grookage.leia.common.stubs.classes.abstracts;
 
-import com.grookage.leia.common.stubs.classes.abstracts.AbstractSchema;
 import com.grookage.leia.common.utils.Constants;
 import com.grookage.leia.models.annotations.SchemaDefinition;
 import com.grookage.leia.models.schema.SchemaType;
@@ -13,19 +12,21 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @SchemaDefinition(
-        name = ValidAbstractSchema.NAME,
+        name = AbstractSchema.NAME,
         namespace = Constants.NAMESPACE,
         orgId = Constants.ORG_ID,
         tenantId = Constants.TENANT,
         type = Constants.TYPE,
-        version = ValidAbstractSchema.VERSION,
-        description = ValidAbstractSchema.DESCRIPTION,
+        version = AbstractSchema.VERSION,
+        description = AbstractSchema.DESCRIPTION,
         schemaType = SchemaType.JSON,
         validation = SchemaValidationType.MATCHING,
         tags = {"foxtrot", "audit"}
 )
-public abstract class ValidAbstractSchema extends AbstractSchema {
-    public static final String NAME = "VALID_ABSTRACT_SCHEMA";
+public abstract class AbstractSchema extends AbstractEntity {
+    public static final String NAME = "ABSTRACT_SCHEMA";
     public static final String VERSION = "V0";
-    public static final String DESCRIPTION = "Valid Abstract class Schema";
+    public static final String DESCRIPTION = "Abstract class Schema";
+    String schemaName;
+    String schemaDescription;
 }
